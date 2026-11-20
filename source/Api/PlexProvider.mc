@@ -989,7 +989,7 @@ class PlexProvider {
 
         // if response too large and limit is possible
 		if ((error instanceof Plexit.GarminSdkError)
-			&& (error.respCode() == Communications.NETWORK_RESPONSE_TOO_LARGE)
+			&& PlexServerRequest.isResponseTooBig(error.respCode())
 			&& (d_limit > 1)) {
 			
 			d_limit = (d_limit / 2).toNumber();		// half the response

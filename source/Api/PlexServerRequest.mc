@@ -94,6 +94,11 @@ class PlexServerRequest {
         onResponse(code, data);
     }
 
+    static function isResponseTooBig(code) {
+        return (code == Communications.NETWORK_RESPONSE_TOO_LARGE)
+            || (code == Communications.NETWORK_RESPONSE_OUT_OF_MEMORY);
+    }
+
     static function canRetry(code) {
         // Never turn cancellation, response-size limits, invalid media or
         // authentication errors into a new network request.

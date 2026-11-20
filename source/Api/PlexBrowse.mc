@@ -201,7 +201,7 @@ class PlexBrowse {
     function onError(error) {
         if (d_cancelled) { return; }
         if ((error instanceof Plexit.GarminSdkError)
-            && (error.respCode() == Communications.NETWORK_RESPONSE_TOO_LARGE)) {
+            && PlexServerRequest.isResponseTooBig(error.respCode())) {
             if ((d_requestKind.equals("page")) && (d_limit > 1)) {
                 d_limit = (d_limit / 2).toNumber();
                 Plexit.Utils.log("Browse response too large; retrying " + d_limit + " items");
