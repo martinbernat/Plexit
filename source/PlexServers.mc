@@ -211,8 +211,29 @@ module PlexServers {
     }
 
     function isEnabled(id) {
-        var record = get(id);
+        return isEnabledIn(all(), id);
+    }
+
+    function isEnabledIn(records, id) {
+        var record = findIn(records, id);
         return (record == null) || (record["enabled"] != false);
+    }
+
+    // isEnabled(PlexSource.serverId(id)) reads storage several times per call;
+    // loops over every pending song must read it once per scan instead.
+    class SourceFilter {
+        private var d_records;
+        private var d_implicitServer;
+
+        function initialize() {
+            d_records = PlexServers.all();
+            d_implicitServer = PlexSource.implicitServer();
+        }
+
+        function isEnabled(id) {
+            var server = PlexSource.explicitServer(id);
+            return PlexServers.isEnabledIn(d_records, (server != null) ? server : d_implicitServer);
+        }
     }
 
     function beginSync() {

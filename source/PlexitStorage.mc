@@ -21,7 +21,7 @@ module Plexit {
 		enum {
 			PLAYABLE,		// playable dictionary 
 
-			SONGS,			// dictionary where song id is key
+			SONGS,			// legacy dictionary where song id is key, migrated to SONG_PREFIX
 			SONGS_DELETE,	// array of song ids of todelete songs (refCount == 0)
 			PLAYLISTS,		// dictionary where playlist id is key
 			
@@ -52,11 +52,16 @@ module Plexit {
 			PLEX_CUSTOM_SERVER_URL,
 			PLEX_SERVERS,
 			PLEX_LEGACY_SERVER_ID,
+			PLAYLISTS_REV,	// incremented on every PLAYLISTS write
+			SONG_IDS,		// array of song ids stored under SONG_PREFIX
+			SONG_PREFIX,	// starting code for the storage key of each song
 
 			VERSION = 200,	// version string of store
 		}
 
 		function check() {
+			SongStore.migrate();
+
 			var current = new PlexitVersion(null);
 			
 			var storage = Application.Storage.getValue(VERSION);

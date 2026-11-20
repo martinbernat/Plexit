@@ -151,9 +151,7 @@ module Plexit {
             do {
                 var id = ids()[index];
                 var type = types()[index];
-                var audio = new Audio(id, type);
-
-                if (audio.refId() != null) {
+                if (SongStore.isCached(id)) {
                     index += 1;
                     continue;
                 }
@@ -256,16 +254,17 @@ module Plexit {
 
             // only add the audios that are available for playing
             for (var idx = 0; idx != ids.size(); ++idx) {
-                var audio = new Audio(ids[idx], type);
+                var id = ids[idx];
 
                 // check for audioid match
-                if ((audio.id() == audioid)
+                if ((id == audioid)
                     || ((audioid instanceof Lang.String)
-                        && (audioid.equals(audio.id())))) {
+                        && (audioid.equals(id)))) {
                     // set index to this audio if matched
                     setIdx(audioidx);
                     
                     // reset progress if this audio was chosen and completed
+                    var audio = new Audio(id, type);
                     var time = audio.time().toNumber();
                     if (time == 0) { time = 1; }
                     var progress = 100 * audio.playback() / time;
@@ -274,12 +273,12 @@ module Plexit {
                 }
 
                 // not added if no refId
-                if (audio.refId() == null) {
+                if (!SongStore.isCached(id)) {
                     continue;
                 }
 
                 // add to ids and indices
-                ids().add(audio.id());
+                ids().add(id);
                 types().add(type);
                 idcs().add(audioidx);
 

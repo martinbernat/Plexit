@@ -1,6 +1,7 @@
 class AudioSync extends Deferrable {
 
 	private var d_provider = null;
+	private var d_providerSource = null;	// server id d_provider was created for
 	private var d_audio = null;		// front of the todos
 	
 	private var d_failed = [];		// array of all failed
@@ -9,7 +10,8 @@ class AudioSync extends Deferrable {
 	private var f_progress; 		// callback on progress
 	
 	// store sync size
-	private var d_pendingAudio = [];	// array of IAudio objects
+	// Song ids only: an Audio object per pending song runs out of memory.
+	private var d_pendingAudio = [];	// array of song ids
 	private var d_pendingTotal;		// the number of items that had to be synced
 
 	function initialize(progress, done, fail) {
@@ -28,11 +30,11 @@ class AudioSync extends Deferrable {
 		// now get songs that have not yet been downloaded
 		ids = SongStore.getIds();
 		for (var idx = 0; idx != ids.size(); ++idx) {
-				var audio = new Audio(ids[idx], Audio.SONG);
+				var song = SongStore.get(ids[idx]);
 
 				// only add to todo if not yet stored
-				if (audio.refId() == null) {
-					d_pendingAudio.add(audio);
+				if ((song == null) || (song["refId"] == null)) {
+					d_pendingAudio.add(ids[idx]);
 				}
 		}
 		d_pendingTotal = d_pendingAudio.size();
@@ -53,19 +55,26 @@ class AudioSync extends Deferrable {
 		f_progress.invoke(progress());
 		
 		// Skip this source for the rest of this sync after its connection failed.
-        if (PlexServers.skipSync(PlexSource.serverId(d_pendingAudio[0].id()))) {
+        var source = PlexSource.serverId(d_pendingAudio[0]);
+        if (PlexServers.skipSync(source)) {
             onError(new Plexit.ApiError(Plexit.ApiError.ACCESS));
             return Deferrable.defer();
         }
-        d_provider = Plexit.Provider.forItem(d_pendingAudio[0].id());
-        d_provider.setFallback(method(:onError));
-        d_provider.setProgressCallback(method(:onProgress));
+        d_audio = new Audio(d_pendingAudio[0], Audio.SONG);
+        // A provider is never freed (its request callbacks form a reference
+        // cycle), so one per song runs out of memory during long syncs.
+        if ((d_provider == null) || !PlexSource.sameServer(d_providerSource, source)) {
+            d_provider = Plexit.Provider.forItem(d_audio.id());
+            d_providerSource = source;
+            d_provider.setFallback(method(:onError));
+            d_provider.setProgressCallback(method(:onProgress));
+        }
         // start download
 		d_provider.getRefId(
-			d_pendingAudio[0].id(),
-			d_pendingAudio[0].mime(),
-			d_pendingAudio[0].mediaKey(),
-			d_pendingAudio[0].type(),
+			d_audio.id(),
+			d_audio.mime(),
+			d_audio.mediaKey(),
+			d_audio.type(),
 			method(:onDownloaded)
 		);
 		return Deferrable.defer();
@@ -97,8 +106,8 @@ class AudioSync extends Deferrable {
 		}
 
 		// update refId
-		var downloadedId = d_pendingAudio[0].id();
-		if (!d_pendingAudio[0].setRefId(refId)) {
+		var downloadedId = d_audio.id();
+		if (!d_audio.setRefId(refId)) {
 			onError(new Plexit.ApiError(Plexit.ApiError.BADRESPONSE));
 			return;
 		}

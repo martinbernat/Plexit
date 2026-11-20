@@ -1,5 +1,6 @@
 using Toybox.System;
 using Toybox.Application;
+using Toybox.Lang;
 using Plexit.Storage;
 
 /**
@@ -22,7 +23,7 @@ class Id {
 
 module SongStore {
 
-	var d_songs = new ObjectStore(Storage.SONGS);			// allows fast indexing by id
+	var d_songs = new KeyedStore(Storage.SONG_PREFIX, Storage.SONG_IDS);
 	var d_delete = new ArrayStore(Storage.SONGS_DELETE);	// allows fast access 
 	var d_songTodos = new ArrayStore(Storage.SONGS_TODO);	// allows fast access
 
@@ -32,6 +33,13 @@ module SongStore {
 
 	function getIds() {
 		return d_songs.getIds();
+	}
+
+	// Avoids building an ISong (and its artwork) per song in whole-library
+	// scans, which trips the watchdog now that each song is a storage read.
+	function isCached(id) {
+		var song = d_songs.get(id);
+		return (song != null) && (song["refId"] != null);
 	}
 
 	function getTodos() {
@@ -54,6 +62,39 @@ module SongStore {
 		d_songs.reset();
 		d_delete.reset();
 		d_songTodos.reset();
+	}
+
+	// Songs used to share the single SONGS value; rewrite them one key each.
+	// Idempotent, so an interrupted migration completes on the next start.
+	function migrate() {
+		var legacy = Application.Storage.getValue(Storage.SONGS);
+		if (!(legacy instanceof Lang.Dictionary)) {
+			return;
+		}
+		d_songs.defer();
+		var values = legacy.values();
+		legacy = null;
+		for (var idx = 0; idx < values.size(); ++idx) {
+			var value = values[idx];
+			if ((value instanceof Lang.Dictionary) && (value["id"] != null)) {
+				d_songs.put(value["id"], value);
+			}
+		}
+		if (d_songs.flush()) {
+			Application.Storage.deleteValue(Storage.SONGS);
+		}
+	}
+
+	function beginBatch() {
+		d_songs.defer();
+		d_delete.defer();
+		d_songTodos.defer();
+	}
+
+	function endBatch() {
+		var success = d_songs.flush();
+		success = d_delete.flush() && success;
+		return d_songTodos.flush() && success;
 	}
 
     // these functions should be used only internally by ISong class

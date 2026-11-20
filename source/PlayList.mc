@@ -217,7 +217,7 @@ class IPlaylist extends Playlist {
     function refreshSyncState() {
         var complete = d_metadataSynced && d_remote && d_local;
         for (var i = 0; complete && (i < d_songs.size()); i += 1) {
-            if ((new ISong(d_songs[i])).refId() == null) { complete = false; }
+            if (!SongStore.isCached(d_songs[i])) { complete = false; }
         }
         setSynced(complete);
         return complete;
@@ -288,10 +288,12 @@ class IPlaylist extends Playlist {
 		}
 		
 		// unlink each of the songs
+		beginStoreBatch();
 		for (var idx = 0; idx < d_songs.size(); ++idx) {
 			var song = new ISong(d_songs[idx]);
 			song.decRefCount();
 		}
+		endStoreBatch();
 		setLinked(false);
 		save();
 	}
@@ -304,10 +306,12 @@ class IPlaylist extends Playlist {
 		}
 	
 		// link each of the songs
+		beginStoreBatch();
 		for (var idx = 0; idx < d_songs.size(); ++idx) {
 			var isong = new ISong(d_songs[idx]);
 			isong.incRefCount();
 		}
+		endStoreBatch();
 		setLinked(true);
 		save();
 	}
@@ -329,6 +333,8 @@ class IPlaylist extends Playlist {
 	
 	// updates song list, returns array of song ids that are not yet locally available
 	function update(songs) {
+		beginStoreBatch();
+
 		// keep track of current songs
 		var songs_now = new [d_songs.size()];
 		for (var idx = 0; idx < songs_now.size(); ++idx) {
@@ -369,6 +375,12 @@ class IPlaylist extends Playlist {
 			
 			// if remove returns true, it was already on the old list, so nothing to do
 			if (songs_now.remove(id)) {
+				// An interrupted sync can leave a listed song unreferenced; it is
+				// then deleted and the playlist never completes. Restore the
+				// reference so the song is downloaded again.
+				if (linked() && (isong.refCount() <= 0)) {
+					isong.incRefCount();
+				}
 				continue;
 			}
 			
@@ -403,8 +415,19 @@ class IPlaylist extends Playlist {
 		// authoritative and prevents a downloaded one-track album showing as 0.
 		setCount(d_songs.size());
 
+		endStoreBatch();
 		save();
 		return songs_new;
+	}
+
+	function beginStoreBatch() {
+		SongStore.beginBatch();
+		ArtworkStore.beginBatch();
+	}
+
+	function endStoreBatch() {
+		SongStore.endBatch();
+		ArtworkStore.endBatch();
 	}
 	
 	// saves the playlist

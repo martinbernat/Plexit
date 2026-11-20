@@ -168,11 +168,11 @@ class PlexitContentDelegate extends Media.ContentDelegate {
 		// if trick not successful, do exhaustive search
 		var ids = SongStore.getIds();
 		for (var idx = 0; idx != ids.size(); ++idx) {
-				audio = new Audio(ids[idx], Audio.SONG);
+				var song = SongStore.get(ids[idx]);
 
 				// return if correct
-				if (refIdsEqual(audio.refId(), refId)) {
-					return audio;
+				if ((song != null) && refIdsEqual(song["refId"], refId)) {
+					return new Audio(ids[idx], Audio.SONG);
 				}
 		}
 		return null;

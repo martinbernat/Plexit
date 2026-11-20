@@ -51,6 +51,16 @@ module ArtworkStore {
 		d_delete.reset();
 	}
 
+	function beginBatch() {
+		d_artworks.defer();
+		d_delete.defer();
+	}
+
+	function endBatch() {
+		var success = d_artworks.flush();
+		return d_delete.flush() && success;
+	}
+
     // these functions should be used only internally by IArtwork class
 	function save(artwork) {
 		// update delete tracking

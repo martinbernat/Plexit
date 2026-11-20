@@ -130,7 +130,8 @@ module PlexAccount {
             else {
                 var songs = Application.Storage.getValue(Storage.SONGS);
                 var playlists = Application.Storage.getValue(Storage.PLAYLISTS);
-                var hasMedia = ((songs instanceof Lang.Dictionary) && (songs.size() > 0))
+                var hasMedia = (SongStore.getIds().size() > 0)
+                    || ((songs instanceof Lang.Dictionary) && (songs.size() > 0))
                     || ((playlists instanceof Lang.Dictionary) && (playlists.size() > 0));
                 if (sameServer || !hasMedia) { Application.Storage.setValue(Storage.PLEX_LEGACY_SERVER_ID, serverId); }
             }

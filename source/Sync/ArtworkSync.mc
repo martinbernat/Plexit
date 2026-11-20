@@ -1,6 +1,7 @@
 class ArtworkSync extends Deferrable {
 
 	private var d_provider = null;
+	private var d_providerSource = null;	// server id d_provider was created for
 	
 	// private var d_failed = [];		// array of all failed
 	
@@ -52,13 +53,18 @@ class ArtworkSync extends Deferrable {
 		// update progress
 		f_progress.invoke(progress());
 		
-		if (PlexServers.skipSync(PlexSource.serverId(d_todo[0].art_id()))) {
+		var source = PlexSource.serverId(d_todo[0].art_id());
+		if (PlexServers.skipSync(source)) {
             d_todo.removeAll(d_todo[0]);
             return sync();
         }
-        d_provider = Plexit.Provider.forItem(d_todo[0].art_id());
-        d_provider.setFallback(method(:onError));
-        d_provider.setProgressCallback(method(:onProgress));
+        // Reuse per server, see AudioSync: providers are never freed.
+        if ((d_provider == null) || !PlexSource.sameServer(d_providerSource, source)) {
+            d_provider = Plexit.Provider.forItem(d_todo[0].art_id());
+            d_providerSource = source;
+            d_provider.setFallback(method(:onError));
+            d_provider.setProgressCallback(method(:onProgress));
+        }
         // start download
 		d_provider.getArtwork(d_todo[0].art_id(), d_todo[0].type(), method(:onDownloaded));
 		return Deferrable.defer();

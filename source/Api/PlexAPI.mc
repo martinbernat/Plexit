@@ -10,6 +10,8 @@ class PlexAPI extends Api {
 	private var d_photoSourceId = null;
 	private var d_photoUsingPublic = false;
 	private var d_artworkUrl = null;
+	private var d_plexPhotoError = null;	// set once a Plex image request timed out
+	private var d_photoTimer = null;
     private var d_request = null;
     private var d_source = null;
     private var d_syncSession = null;
@@ -552,6 +554,17 @@ class PlexAPI extends Api {
 	}
 
 	function startPlexPhotoTranscode() {
+		// Garmin fetches images through its own servers; when those cannot
+		// reach this Plex server, every request waits ~30 s before failing.
+		// Skip Plex artwork for the rest of this sync after the first timeout.
+		// Fail from a timer: an immediate fallback would recurse through
+		// ArtworkSync.sync() once per remaining artwork.
+		if (d_plexPhotoError != null) {
+			Plexit.Utils.log("Skipping Plex artwork: image request timed out earlier in this sync");
+			d_photoTimer = new Toybox.Timer.Timer();
+			d_photoTimer.start(method(:onPhotoSkipped), 50, false);
+			return;
+		}
 
 		var imageBaseUrl = (d_artworkUrl != null) ? d_artworkUrl : url();
 		var photoUrl = imageBaseUrl + "/photo/:/transcode"
@@ -581,6 +594,12 @@ class PlexAPI extends Api {
 		return encoded + remainder;
 	}
 
+	function onPhotoSkipped() {
+		d_photoTimer = null;
+		if (!PlexSyncSession.valid(d_syncSession)) { return; }
+		d_fallback.invoke(d_plexPhotoError);
+	}
+
 	function onPhoto(responseCode, data) {
         if (!PlexSyncSession.valid(d_syncSession)) { return; }
 		Plexit.Utils.log("Artwork download completed with response " + responseCode);
@@ -592,6 +611,9 @@ class PlexAPI extends Api {
 				Plexit.Utils.log("Public artwork unavailable; trying Plex artwork");
 				startPlexPhotoTranscode();
 				return;
+			}
+			if (responseCode == Communications.UNKNOWN_ERROR) {
+				d_plexPhotoError = error;
 			}
 			d_fallback.invoke(error);
 			return;

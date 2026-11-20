@@ -408,7 +408,6 @@ module Plexit {
                     + ", saved=" + saved
                     + ", stored=" + persisted.stored()
                     + ", local=" + persisted.local());
-                PlaylistStore.debugState("after-toggle");
             }
 
             function findCollection(id) {
