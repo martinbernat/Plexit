@@ -62,22 +62,22 @@ module Plexit {
 					return null;
 				}
 				RatingStore.reload();
+                var sources = new PlexServers.SourceFilter();
                 var pendingRatings = 0;
                 var ratingIds = RatingStore.getIds();
                 for (var ratingIdx = 0; ratingIdx < ratingIds.size(); ratingIdx += 1) {
-                    if (PlexServers.isEnabled(PlexSource.serverId(ratingIds[ratingIdx]))) { pendingRatings += 1; }
+                    if (sources.isEnabled(ratingIds[ratingIdx])) { pendingRatings += 1; }
                 }
 				// A child browse menu can persist a selection from a different
 				// native view context. Always read the latest persisted selection.
 				PlaylistStore.reload();
-				PlaylistStore.debugState("pending-menu");
 				var songs = 0;
 				var changes = false;
 				var selections = 0;
 				var ids = PlaylistStore.getIds();
 				for (var idx = 0; idx < ids.size(); ++idx) {
 					var playlist = new IPlaylist(ids[idx]);
-                    if (playlist.local() && !PlexServers.isEnabled(PlexSource.serverId(playlist.id()))) { continue; }
+                    if (playlist.local() && !sources.isEnabled(playlist.id())) { continue; }
 					if (playlist.local() && !playlist.synced()) {
 						songs += playlist.count();
 						selections += 1;
@@ -92,7 +92,7 @@ module Plexit {
                 var todoIds = SongStore.getTodos();
                 var todoSongs = 0;
                 for (var todoIdx = 0; todoIdx < todoIds.size(); todoIdx += 1) {
-                    if (PlexServers.isEnabled(PlexSource.serverId(todoIds[todoIdx]))) { todoSongs += 1; }
+                    if (sources.isEnabled(todoIds[todoIdx])) { todoSongs += 1; }
                 }
 				if (todoSongs > songs) {
 					songs = todoSongs;

@@ -52,6 +52,7 @@ module Plexit {
 			PLEX_CUSTOM_SERVER_URL,
 			PLEX_SERVERS,
 			PLEX_LEGACY_SERVER_ID,
+			PLAYLISTS_REV,	// incremented on every PLAYLISTS write
 
 			VERSION = 200,	// version string of store
 		}

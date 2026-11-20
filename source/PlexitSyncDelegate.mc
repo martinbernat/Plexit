@@ -98,14 +98,15 @@ module Plexit {
 			reportProgress(100);
 			// finish sync
             var incomplete = false;
+            var sources = new PlexServers.SourceFilter();
             var pendingIds = SongStore.getTodos();
             for (var pendingIdx = 0; pendingIdx < pendingIds.size(); pendingIdx += 1) {
-                if (PlexServers.isEnabled(PlexSource.serverId(pendingIds[pendingIdx]))) { incomplete = true; }
+                if (sources.isEnabled(pendingIds[pendingIdx])) { incomplete = true; }
             }
             for (var checkIdx = 0; checkIdx < playlistIds.size(); checkIdx += 1) {
                 var selection = new IPlaylist(playlistIds[checkIdx]);
                 if (selection.local() && !selection.synced()
-                    && PlexServers.isEnabled(PlexSource.serverId(selection.id()))) { incomplete = true; }
+                    && sources.isEnabled(selection.id())) { incomplete = true; }
             }
 			d_running = false;
             PlexSyncSession.stop();
